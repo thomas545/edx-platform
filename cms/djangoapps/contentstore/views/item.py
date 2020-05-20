@@ -1231,11 +1231,14 @@ def create_xblock_info(xblock, data=None, metadata=None, include_ancestor_info=F
             elif xblock.category == 'sequential':
                 rules_url = settings.PROCTORING_SETTINGS.get('LINK_URLS', {}).get('online_proctoring_rules', "")
                 supports_onboarding = does_backend_support_onboarding(course.proctoring_provider)
+                proctoring_exam_configuration_link = get_exam_configuration_dashboard_url(
+                    course.id, xblock_info['id']
+                )
 
-                proctoring_exam_configuration_link = None
-                if xblock.is_proctored_exam:
-                    proctoring_exam_configuration_link = get_exam_configuration_dashboard_url(
-                        course.id, xblock_info['id'])
+                # The best way for us to tell whether an exam was *ever* configured
+                # as proctored is by checking whether we have a link to its
+                # proctoring configuration.
+                was_ever_proctored_exam = proctoring_exam_configuration_link is not None
 
                 if course.proctoring_provider == 'proctortrack':
                     show_review_rules = SHOW_REVIEW_RULES_FLAG.is_enabled(xblock.location.course_key)
@@ -1244,13 +1247,17 @@ def create_xblock_info(xblock, data=None, metadata=None, include_ancestor_info=F
 
                 xblock_info.update({
                     'is_proctored_exam': xblock.is_proctored_exam,
+                    'was_ever_proctored_exam': was_ever_proctored_exam,
                     'online_proctoring_rules': rules_url,
                     'is_practice_exam': xblock.is_practice_exam,
                     'is_onboarding_exam': xblock.is_onboarding_exam,
                     'is_time_limited': xblock.is_time_limited,
                     'exam_review_rules': xblock.exam_review_rules,
                     'default_time_limit_minutes': xblock.default_time_limit_minutes,
-                    'proctoring_exam_configuration_link': proctoring_exam_configuration_link,
+                    'proctoring_exam_configuration_link': (
+                        proctoring_exam_configuration_link if xblock.is_proctored_exam
+                        else None
+                    ),
                     'supports_onboarding': supports_onboarding,
                     'show_review_rules': show_review_rules
                 })
