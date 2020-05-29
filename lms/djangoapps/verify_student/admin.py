@@ -14,7 +14,7 @@ from lms.djangoapps.verify_student.models import (
 @admin.register(SoftwareSecurePhotoVerification)
 class SoftwareSecurePhotoVerificationAdmin(admin.ModelAdmin):
     """
-    Admin for the SoftwareSecurePhotoVerification table.
+    Admin for the SoftwareSecurePhotoVerification table
     """
     list_display = ('id', 'user', 'status', 'receipt_id', 'submitted_at', 'updated_at',)
     raw_id_fields = ('user', 'reviewing_user', 'copy_id_photo_from',)
