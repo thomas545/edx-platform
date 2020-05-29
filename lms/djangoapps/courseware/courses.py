@@ -47,7 +47,6 @@ from lms.djangoapps.courseware.masquerade import check_content_start_date_for_ma
 from lms.djangoapps.courseware.model_data import FieldDataCache
 from lms.djangoapps.courseware.module_render import get_module
 from edxmako.shortcuts import render_to_string
-from lms.djangoapps.certificates import api as certs_api
 from lms.djangoapps.courseware.access_utils import (
     check_authentication,
     check_enrollment,
@@ -462,24 +461,24 @@ def get_course_date_blocks(course, user, request=None, include_access=False,
     sorted by date.
     """
     block_classes = [
+        CertificateAvailableDate,
         CourseEndDate,
+        CourseExpiredDate,
         CourseStartDate,
         TodaysDate,
         VerificationDeadlineDate,
         VerifiedUpgradeDeadlineDate,
     ]
-    if not course.self_paced and certs_api.get_active_web_certificate(course):
-        block_classes.insert(0, CertificateAvailableDate)
 
     blocks = [cls(course, user) for cls in block_classes]
     if RELATIVE_DATES_FLAG.is_enabled(course.id):
-        blocks.append(CourseExpiredDate(course, user))
         blocks.extend(get_course_assignment_date_blocks(
             course, user, request, num_return=num_assignments,
             include_access=include_access, include_past_dates=include_past_dates,
         ))
 
-    return sorted((b for b in blocks if b.date and (b.is_enabled or include_past_dates)), key=date_block_key_fn)
+    blocks = filter(lambda b: b.is_allowed and b.date and (include_past_dates or b.is_enabled), blocks)
+    return sorted(blocks, key=date_block_key_fn)
 
 
 def date_block_key_fn(block):
