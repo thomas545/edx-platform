@@ -110,8 +110,10 @@ class TeamMembershipImportManager(object):
         self.existing_course_team_memberships = {}
         self.existing_course_teams = {}
         self.user_count_by_team = Counter()
+        self.user_enrollment_by_team = {}
         self.user_to_remove_by_team = Counter()
         self.number_of_learners_assigned = 0
+        self.user_to_actual_enrollment_mode = {}
 
     @property
     def import_succeeded(self):
@@ -240,7 +242,7 @@ class TeamMembershipImportManager(object):
         if actual_enrollment_mode != supplied_enrollment.strip():
             self.validation_errors.append('User ' + user.username + ' enrollment mismatch.')
             return False
-
+        self.user_to_actual_enrollment_mode[user.id] = actual_enrollment_mode
         return True
 
     def is_username_unique(self, username, usernames_found_so_far):
@@ -294,6 +296,8 @@ class TeamMembershipImportManager(object):
                     pass
                 continue
             try:
+                if not self.validate_compatible_enrollment_modes(user, team_name, teamset_id):
+                    return False
                 # checks for a team inside a specific team set. This way team names can be duplicated across
                 # teamsets
                 team = self.existing_course_teams[(team_name, teamset_id)]
@@ -304,6 +308,20 @@ class TeamMembershipImportManager(object):
 
             if not self.validate_proposed_team_size_wont_exceed_maximum(team_name, teamset_id):
                 return False
+        return True
+
+    def validate_compatible_enrollment_modes(self, user, team_name, teamset_id):
+        """
+        Validates that only students enrolled in a masters track are on a single team. Disallows mixing of masters
+        with other enrollment modes on a single team.
+        """
+        if(teamset_id, team_name) not in self.user_enrollment_by_team:
+            self.user_enrollment_by_team[teamset_id, team_name] = set()
+        self.user_enrollment_by_team[teamset_id, team_name].add(self.user_to_actual_enrollment_mode[user.id])
+        if 'masters' in self.user_enrollment_by_team[teamset_id, team_name] and \
+                len(self.user_enrollment_by_team[teamset_id, team_name]) > 1:
+            self.add_error_and_check_if_max_exceeded('Masters track students can not be combined with other tracks.')
+            return False
         return True
 
     def validate_proposed_team_size_wont_exceed_maximum(self, team_name, teamset_id):
