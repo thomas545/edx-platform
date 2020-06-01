@@ -12,7 +12,7 @@ from edx_rest_framework_extensions.auth.session.authentication import SessionAut
 from opaque_keys import InvalidKeyError
 from opaque_keys.edx.keys import CourseKey
 from rest_condition import C
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from rest_framework.permissions import IsAdminUser, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -23,8 +23,11 @@ from openedx.core.djangoapps.content.course_overviews.models import CourseOvervi
 from openedx.core.djangoapps.user_api.accounts.api import visible_fields
 from openedx.core.lib.api.authentication import BearerAuthenticationAllowInactiveUser
 
+from .permissions import IsAdminOrSelfUser
+
 log = logging.getLogger(__name__)
 User = get_user_model()
+
 
 
 class CertificatesDetailView(APIView):
@@ -158,7 +161,7 @@ class CertificatesListView(APIView):
                 permissions.JwtHasUserFilterForRequestedUser
             )
         ),
-        IsAdminUser,
+        IsAdminOrSelfUser,
     )
 
     required_scopes = ['certificates:read']
